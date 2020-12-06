@@ -1,5 +1,6 @@
 from optimization.genetic_algorithm import GeneticAlgorithm
 import pandas as pd
+import random
 
 
 def main():
@@ -12,4 +13,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    print(random.uniform(0, 10))

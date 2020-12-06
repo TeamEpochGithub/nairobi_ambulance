@@ -21,6 +21,7 @@ class GeneticAlgorithm:
     def calculate_fitness(self, solution):
         """
         Calculates the value of the fitness function for a given solution (positions of 6 ambulances).
+        The geneic algorithm tries to minimize this value.
         :param solution: list of lists of two floats each with x and y coordinates of the ambulances
         :return:
         """
