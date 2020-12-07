@@ -3,6 +3,7 @@ from deap import tools
 from deap import algorithms
 from deap import creator
 import random
+import multiprocessing
 
 from optimization.genetic_algorithm import GeneticAlgorithm
 
@@ -18,13 +19,17 @@ if __name__ == "__main__":
     print('Car crashes:')
     print(car_crashes)
 
-    def evaluate(individual):
+    def evaluate(individual, representatives):
         # Compute the collaboration fitness
         total_distance = 0
+        distance_to_representatives = 0
+
+        for r in representatives:
+            distance_to_representatives += find_distance(individual, r)
 
         for car_crash in car_crashes:
             total_distance += find_distance(car_crash, individual)
-        return [total_distance]
+        return [total_distance - distance_to_representatives]
 
     def generate_random_float():
         return random.uniform(-10.0, 10.0)
@@ -62,9 +67,11 @@ if __name__ == "__main__":
             # Vary the species individuals
             s = algorithms.varAnd(s, toolbox, 0.6, 1.0)
 
+            other_representatives = representatives[:i] + representatives[i + 1:]
+
             for ind in s:
                 # Evaluate and set the individual fitness
-                ind.fitness.values = toolbox.evaluate(ind)
+                ind.fitness.values = toolbox.evaluate(ind, other_representatives)
 
             # Select the individuals
             species[i] = toolbox.select(s, len(s))  # Tournament selection
