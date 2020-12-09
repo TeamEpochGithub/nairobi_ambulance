@@ -4,7 +4,7 @@ import random
 
 
 def find_distance(a, b):
-    return np.linalg.norm(a-b)
+    return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
 
 
 class GeneticAlgorithm:
@@ -13,8 +13,8 @@ class GeneticAlgorithm:
 
         self.car_crashes = crashes
 
-        car_crashes = [(random.uniform(-10.0, 10.0), random.uniform(-10.0, 10.0)) for i in range(10)]
-        self.car_crashes = np.array(car_crashes)
+        #car_crashes = [(random.uniform(-10.0, 10.0), random.uniform(-10.0, 10.0)) for i in range(10)]
+        #self.car_crashes = np.array(car_crashes)
 
         self.max_num_iterations = max_num_iterations
 
@@ -50,7 +50,7 @@ class GeneticAlgorithm:
         return solution[index_closest_ambulance]
 
     def run(self):
-        varbound = np.array([[-10.0, 10.0]] * 12)
+        varbound = np.array([[36.2, 38], [-3.2, -0.5]] * 6)
 
         algorithm_param = {'max_num_iteration': self.max_num_iterations,
                            'population_size': 100,
@@ -68,4 +68,5 @@ class GeneticAlgorithm:
 
         convergence = model.report
 
-        print(convergence)
+        #print(convergence)
+        return model.output_dict['variable']
