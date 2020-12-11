@@ -1,6 +1,7 @@
 import numpy as np
 from geneticalgorithm import geneticalgorithm as ga
 import random
+import time
 
 
 def find_distance(a, b):
@@ -9,7 +10,7 @@ def find_distance(a, b):
 
 class GeneticAlgorithm:
 
-    def __init__(self, crashes, max_num_iterations):
+    def __init__(self, crashes=None, max_num_iterations=None):
 
         self.car_crashes = crashes
 
@@ -51,6 +52,7 @@ class GeneticAlgorithm:
         return solution[index_closest_ambulance]
 
     def run(self):
+        start_time = time.time()
         varbound = np.array([[-10.0, 10.0]] * 12)
 
         algorithm_param = {'max_num_iteration': self.max_num_iterations,
@@ -66,6 +68,7 @@ class GeneticAlgorithm:
                    variable_boundaries=varbound, algorithm_parameters=algorithm_param)
 
         model.run()
+        print("--- %s seconds ---" % (time.time() - start_time))
 
         convergence = model.report
 
