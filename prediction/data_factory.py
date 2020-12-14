@@ -113,7 +113,8 @@ Iterate through both dataframes and if osm_way_id, osm_start_node_id and osm_end
 assign to that row the road data
 '''
 # def assign_linestring_to_speed(road, speed):
-# trying instead for nested loop to do lambda expressions
+
+# trying instead for nested loop to do lambda expressions + Dask parallelization
 # geo_speed_data['geometry'] = geo_speed_data.apply(lambda row: assign_linestring_to_speed(road, row))
 for i, road in road_processed.iterrows():
 
