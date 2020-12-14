@@ -4,7 +4,7 @@ from time_aux_functions import roundDateTime3h
 from time_aux_functions import gen_datetime
 
 # Load the training data
-dfCrashes = pd.read_csv('Data/Train.csv', parse_dates=['datetime'])
+dfCrashes = pd.read_csv('nairobi_data/data_zindi/Train.csv', parse_dates=['datetime'])
 
 # Remove the useless columns
 dfCrashes = dfCrashes.drop(columns='uid')
