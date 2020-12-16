@@ -1,3 +1,5 @@
+import os
+
 from deap import base
 from deap import tools
 from deap import algorithms
@@ -7,7 +9,7 @@ import random
 import multiprocessing as mp
 from tqdm import tqdm
 from optimization.genetic_algorithm import GeneticAlgorithm
-
+import psutil
 
 
 def generate_random_float():
@@ -29,9 +31,13 @@ car_crashes = generate_random_points(10)
 
 
 def evaluate(individual, representatives):
-    # Compute the collaboration fitness
-    # print('eval::::::::::')
-    # print(representatives)
+    """
+    Calculates fitness which is then taken with a negative sign by the library's toolbox. So the higher the return value
+     of this function - the worse the individual is.
+    :param individual: the current individual we evaluate
+    :param representatives: the best individuals from the other populations
+    :return: fitness
+    """
     total_distance = 0
     distance_to_representatives = 0
 
@@ -65,12 +71,17 @@ NUM_SPECIES = 6
 
 
 def evolve_species(species, arr_representatives, index):
-    # print(species)
-    # print(arr_representatives)
-    # print(i)
+    """
 
+    :param species: the current population(species)
+    :param arr_representatives: the best individuals from each population
+    :param index: the index of the best individual of the current species
+    We need this so we can ignore the best individual from the current species and
+    use only the ones from the other populations.
+    :return: the best individual from this population after all of the evolution has been done
+    """
     representative = toolbox.get_best(species)
-    arr_representatives[index] = representative
+    arr_representatives[index] = representative[0]
 
     ngen = 3000
 
@@ -95,14 +106,21 @@ def evolve_species(species, arr_representatives, index):
 
 
 if __name__ == '__main__':
+    p = psutil.Process()
+    all_cpus = list(range(psutil.cpu_count()))
+    p.cpu_affinity(all_cpus)
+
     start_time = time.time()
 
     pool = mp.Pool(6)
 
     with mp.Manager() as manager:
+        print(generate_random_points(NUM_SPECIES))
         arr_representatives = manager.list(generate_random_points(NUM_SPECIES))
-        results = [pool.apply(evolve_species, args=(toolbox.species(), arr_representatives, i)) for i in
+        results1 = [pool.apply_async(evolve_species, args=(toolbox.species(), arr_representatives, i)) for i in
                    range(NUM_SPECIES)]
+
+        results = [p.get() for p in results1]
 
         print(results)
 
