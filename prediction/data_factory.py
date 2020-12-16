@@ -3,8 +3,10 @@ import dask.dataframe as dd
 
 # Geo-spatial data
 import geopandas as gpd
+import math
 from geopandas import GeoDataFrame
 from shapely.geometry import Point, LineString
+from shapely.ops import nearest_points
 
 # Classic
 import numpy as np
@@ -125,7 +127,6 @@ for i, road in road_processed.iterrows():
             geo_speed_data.at[j, 'geometry'] = road['geometry']
             geo_speed_data.at[j, 'osmhighway'] = road['osmhighway']
 
-
 '''
 Assigning points to the particular road in particular time if the distance threshold is met.
 Converted lat and lon to Point geo-object and using .distance() to measure distance between the road and
@@ -140,19 +141,50 @@ def point_to_road(point, road, road_index, distance):
         geo_speed_data.at[smallest_index_road, 'latitude'] = point['latitude']
 
 
+# Computes the shortest distance between two points based on their coordinates
+# The formula : https://en.wikipedia.org/wiki/Great-circle_distance
+def haversine(coord1, coord2):
+
+    # Coordinates in decimal degrees (e.g. 2.89078, 12.79797)
+    lon1, lat1 = coord1[0]
+    lon2, lat2 = coord2[0]
+    R = 6371000  # radius of Earth in meters
+    phi_1 = math.radians(lat1)
+    phi_2 = math.radians(lat2)
+
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+
+    a = math.sin(delta_phi / 2.0) ** 2 + math.cos(phi_1) * math.cos(phi_2) * math.sin(delta_lambda / 2.0) ** 2
+
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    meters = R * c  # output distance in meters
+    # km = meters / 1000.0  # output distance in kilometers
+
+    meters = round(meters)
+    # km = round(km, 3)
+    # print(f"Distance: {meters} m")
+    # print(f"Distance: {km} km")
+    return meters
+
+
 # Iterate through points and roads
-for i, point in train.iterrows():
+for i, point in geo_points.iterrows():
 
     smallest_distance = sys.maxint;
     smallest_index_road = -1;
     for j, road in geo_speed_data.iterrows():
-        current_distance = geo_points['geometry'].distance(road['geometry'])
 
-        if current_distance < smallest_distance:
+        # Getting the point of the road that is nearest to the
+        road_geometry = road['geometry']
+        nearest_road_point = nearest_points(road_geometry, point['geometry'])[0]
 
-            if road['utc_timestamp'].hour < point['datetime'].hour:
-                smallest_distance = current_distance
-            smallest_index_road = j
+        current_smallest_distance = haversine(nearest_road_point, point['geometry'])
+        # if current_smallest_distance < smallest_distance:
+        #      if road['utc_timestamp'].hour < point['datetime'].hour:
+        #         smallest_distance = current_smallest_distance
+        #     smallest_index_road = j
 
     point_to_road(point, road, smallest_index_road, smallest_distance)
 
