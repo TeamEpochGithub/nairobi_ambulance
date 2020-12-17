@@ -1,6 +1,7 @@
 import numpy as np
 from geneticalgorithm import geneticalgorithm as ga
 import random
+import time
 
 
 def find_distance(a, b):
@@ -9,18 +10,19 @@ def find_distance(a, b):
 
 class GeneticAlgorithm:
 
-    def __init__(self, crashes, max_num_iterations):
+    def __init__(self, crashes=None, max_num_iterations=None):
 
         self.car_crashes = crashes
 
-        #car_crashes = [(random.uniform(-10.0, 10.0), random.uniform(-10.0, 10.0)) for i in range(10)]
-        #self.car_crashes = np.array(car_crashes)
+        car_crashes = [(random.uniform(-10.0, 10.0), random.uniform(-10.0, 10.0)) for i in range(10)]
+        self.car_crashes = np.array(car_crashes)
 
         self.max_num_iterations = max_num_iterations
 
     def calculate_fitness(self, solution):
         """
         Calculates the value of the fitness function for a given solution (positions of 6 ambulances).
+        The geneic algorithm tries to minimize this value.
         :param solution: list of lists of two floats each with x and y coordinates of the ambulances
         :return:
         """
@@ -30,26 +32,25 @@ class GeneticAlgorithm:
         total_fitness = 0
 
         for car_crash in self.car_crashes:
-            closest_ambulance = self.find_closest_ambulance(car_crash, solution)
-            total_fitness += find_distance(car_crash, closest_ambulance)
+            distance_to_closest_ambulance = self.distance_to_closest_ambulance(car_crash, solution)
+            total_fitness += distance_to_closest_ambulance
 
         return total_fitness
 
     @staticmethod
-    def find_closest_ambulance(car_crash, solution):
+    def distance_to_closest_ambulance(car_crash, solution):
         shortest_distance = find_distance(car_crash, solution[0])
-        index_closest_ambulance = 0
 
         for i, ambulance in enumerate(solution):
             curr_distance = find_distance(car_crash, ambulance)
 
             if curr_distance < shortest_distance:
                 shortest_distance = curr_distance
-                index_closest_ambulance = i
 
-        return solution[index_closest_ambulance]
+        return shortest_distance
 
     def run(self):
+        start_time = time.time()
         varbound = np.array([[36.2, 38], [-3.2, -0.5]] * 6)
 
         algorithm_param = {'max_num_iteration': self.max_num_iterations,
@@ -65,6 +66,7 @@ class GeneticAlgorithm:
                    variable_boundaries=varbound, algorithm_parameters=algorithm_param)
 
         model.run()
+        print("--- %s seconds ---" % (time.time() - start_time))
 
         convergence = model.report
 
