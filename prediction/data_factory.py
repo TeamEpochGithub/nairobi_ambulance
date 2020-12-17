@@ -18,8 +18,7 @@ import sys
 import glob
 
 '''
-Loading the data with geopandas in order for 'geometry' column to be created.
-Second option is the load .csv as in panda and then convert it to GeoDataFrame.
+Loading the speed data
 '''
 # January - March 2018
 nairobi_speed_january_2018 = gpd.read_file('nairobi_speed_january_2018.csv', parse_dates=["utc_timestamp"])
@@ -67,12 +66,8 @@ speed_data = [nairobi_speed_january_2018, nairobi_speed_february_2018, nairobi_s
 geo_speed_data = gpd.GeoDataFrame(pd.concat(speed_data, ignore_index=True))
 
 '''
-Dask doesn't have configuration for geopandas, however this one has:
-https://github.com/jsignell/dask-geopandas
-It is still in the experimental stage though. 
-It is a shame tho :(
-
-Also cannot just work with Pandas and Dask because it doesn't recognize GeoSeries.
+Dask parallelization
+Dask Geopandas : https://github.com/jsignell/dask-geopandas (still experimental)
 '''
 # Speed data with parallelization
 # df_speed = dd.read_csv("nairobi_speed_*_*.csv", parse_dates=["utc_timestamp"])
@@ -80,14 +75,88 @@ Also cannot just work with Pandas and Dask because it doesn't recognize GeoSerie
 # Road data
 nairobi_speed_only_visualization = gpd.read_file('nairobi_speed_only_visualization.geojson')
 
-# Loading training data
-train = pd.read_csv('DataJupyter/Train.csv')
+'''
+Loading data from Zindi
+'''
+
+# Training data
+train = pd.read_csv('nairobi_data/data_zindi/Train.csv')
+
+# Weather data
+weather_data = pd.read_csv('nairobi_data/data_zindi/Weather_Nairobi_Daily_GFS.csv')
+
+# Segment survey data
+segment_info = pd.read_csv('nairobi_data/data_zindi/Segment_info.csv')
+
+# Segment geometry
+segment_geometry = gpd.read_file('nairobi_data/data_zindi/segments_geometry.geojson')
+
+#################################################################################################
+####################################### Data Processing #########################################
+#################################################################################################
+####################################### NOT FINISHED ############################################
+#################################################################################################
+
+'''
+Functions needed for operations and processing
+'''
+
+
+# Delete rows with NaN
+def delete_rows_with_nan(dataframe):
+    is_NaN = dataframe.isnull()
+    row_has_NaN = is_NaN.any(axis=1)
+    rows_with_NaN = dataframe[row_has_NaN]
+
+    for index, row in rows_with_NaN.iterrows():
+        dataframe = dataframe.drop(index)
+        df = df.drop(index)
+
+
+# Computes the shortest distance between two points based on their coordinates
+# The formula : https://en.wikipedia.org/wiki/Great-circle_distance
+def haversine(coord1, coord2):
+    # Coordinates in decimal degrees (e.g. 2.89078, 12.79797)
+    lon1, lat1 = coord1[0]
+    lon2, lat2 = coord2[0]
+    R = 6371000  # radius of Earth in meters
+    phi_1 = math.radians(lat1)
+    phi_2 = math.radians(lat2)
+
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+
+    a = math.sin(delta_phi / 2.0) ** 2 + math.cos(phi_1) * math.cos(phi_2) * math.sin(delta_lambda / 2.0) ** 2
+
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    meters = R * c  # output distance in meters
+    # km = meters / 1000.0  # output distance in kilometers
+
+    meters = round(meters)
+    # km = round(km, 3)
+    # print(f"Distance: {meters} m")
+    # print(f"Distance: {km} km")
+    return meters
+
+
+# Processing weather data
+delete_rows_with_nan(weather_data)
+
+# Creating a column with only date, and transforming it into Datetime object
+train['date'] = pd.to_datetime([d.date() for d in train.datetime])
+
+# Merge train with weather
+train_with_weather = train.merge(weather_data, how='left', left_on='date', right_on='Date')
+train_with_weather.drop('date', axis=1, inplace=True)
+train_with_weather.drop('Date', axis=1, inplace=True)
+train_with_weather.drop('uid', axis=1, inplace=True)
 
 # Processing the road data
 road_processed = nairobi_speed_only_visualization.drop(['speed_mean_kph', 'pct_from_freeflow',
                                                         'speed_freeflow_kph'], axis=1)
 
-# # Creating a (geometry) point column and add it to the Train.csv
+# Creating a (geometry) point column and add it to the Train.csv
 points = [Point(xy) for xy in zip(train['longitude'], train['latitude'])]
 
 # Converting to GeoDataframe in order to have Points object as geometry dtype containing points
@@ -95,19 +164,16 @@ geo_points = GeoDataFrame(train, crs="EPSG:4326", geometry=points)
 geo_speed_data['longitude'] = np.nan
 geo_speed_data['latitude'] = np.nan
 
-#################################################################################################
-####################################### Data Processing #########################################
-#################################################################################################
-####################################### NOT FINISHED ############################################
-#################################################################################################
-'''
-Carefully read this : Maybe it's not good idea to do road/speed first but points/road and then (points/road)/speed.
+# Closest point to the segment_geometry : TESTING PURPOSES
+for i, point in geo_points.iterrows():
 
-Author : Bill Ton Hoang Nguyen
-Last updated : 12/14/2020
-Notes : gonna change the design of the data processing, also I am still trying to make it more efficient.
-If not then we have to run it several hours.
-'''
+    smallest_distance = 1000000000000
+    for j, road in segment_geometry.iterrows():
+
+        current_distance = point['geometry'].distance(road['geometry'])
+        if (current_distance < smallest_distance):
+            smallest_distance = current_distance
+    print(point.geometry, ":", smallest_distance)
 
 '''
 Assigning GeoSeries (in this case LineString) to the speed data.
@@ -141,41 +207,12 @@ def point_to_road(point, road, road_index, distance):
         geo_speed_data.at[smallest_index_road, 'latitude'] = point['latitude']
 
 
-# Computes the shortest distance between two points based on their coordinates
-# The formula : https://en.wikipedia.org/wiki/Great-circle_distance
-def haversine(coord1, coord2):
-
-    # Coordinates in decimal degrees (e.g. 2.89078, 12.79797)
-    lon1, lat1 = coord1[0]
-    lon2, lat2 = coord2[0]
-    R = 6371000  # radius of Earth in meters
-    phi_1 = math.radians(lat1)
-    phi_2 = math.radians(lat2)
-
-    delta_phi = math.radians(lat2 - lat1)
-    delta_lambda = math.radians(lon2 - lon1)
-
-    a = math.sin(delta_phi / 2.0) ** 2 + math.cos(phi_1) * math.cos(phi_2) * math.sin(delta_lambda / 2.0) ** 2
-
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-    meters = R * c  # output distance in meters
-    # km = meters / 1000.0  # output distance in kilometers
-
-    meters = round(meters)
-    # km = round(km, 3)
-    # print(f"Distance: {meters} m")
-    # print(f"Distance: {km} km")
-    return meters
-
-
 # Iterate through points and roads
 for i, point in geo_points.iterrows():
 
     smallest_distance = sys.maxint;
     smallest_index_road = -1;
     for j, road in geo_speed_data.iterrows():
-
         # Getting the point of the road that is nearest to the
         road_geometry = road['geometry']
         nearest_road_point = nearest_points(road_geometry, point['geometry'])[0]
@@ -192,16 +229,6 @@ for i, point in geo_points.iterrows():
 Deleting redundant rows (roads) if no points were assigned.
 '''
 
-
 # Drop the speed rows if it contains points that are NaN
-def delete_rows_with_nan(dataframe):
-    is_NaN = dataframe.isnull()
-    row_has_NaN = is_NaN.any(axis=1)
-    rows_with_NaN = dataframe[row_has_NaN]
-
-    for index, row in rows_with_NaN.iterrows():
-        dataframe = dataframe.drop(index)
-        df = df.drop(index)
-
 
 delete_rows_with_nan(geo_speed_data)
