@@ -1,1 +1,0 @@
-Visualization of .geojson data : https://kepler.gl/
