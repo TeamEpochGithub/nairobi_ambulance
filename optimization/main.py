@@ -8,7 +8,7 @@ def main():
     # del df_crashes['uid']
     # del df_crashes['datetime']
     # car_crashes = df_crashes.to_numpy()
-    ga = GeneticAlgorithm([], 3000)
+    ga = GeneticAlgorithm(max_num_iterations=3000)
     ga.run()
 
 

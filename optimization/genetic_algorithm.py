@@ -14,8 +14,8 @@ class GeneticAlgorithm:
 
         self.car_crashes = crashes
 
-        #car_crashes = [(random.uniform(-10.0, 10.0), random.uniform(-10.0, 10.0)) for i in range(10)]
-        #self.car_crashes = np.array(car_crashes)
+        car_crashes = [(random.uniform(-10.0, 10.0), random.uniform(-10.0, 10.0)) for i in range(10)]
+        self.car_crashes = np.array(car_crashes)
 
         self.max_num_iterations = max_num_iterations
 
@@ -32,24 +32,22 @@ class GeneticAlgorithm:
         total_fitness = 0
 
         for car_crash in self.car_crashes:
-            closest_ambulance = self.find_closest_ambulance(car_crash, solution)
-            total_fitness += find_distance(car_crash, closest_ambulance)
+            distance_to_closest_ambulance = self.distance_to_closest_ambulance(car_crash, solution)
+            total_fitness += distance_to_closest_ambulance
 
         return total_fitness
 
     @staticmethod
-    def find_closest_ambulance(car_crash, solution):
+    def distance_to_closest_ambulance(car_crash, solution):
         shortest_distance = find_distance(car_crash, solution[0])
-        index_closest_ambulance = 0
 
         for i, ambulance in enumerate(solution):
             curr_distance = find_distance(car_crash, ambulance)
 
             if curr_distance < shortest_distance:
                 shortest_distance = curr_distance
-                index_closest_ambulance = i
 
-        return solution[index_closest_ambulance]
+        return shortest_distance
 
     def run(self):
         start_time = time.time()

@@ -17,6 +17,7 @@ def generate_random_float():
 
 
 def generate_random_points(n):
+    print("Generate random points!!!!!!!!!")
     representatives = []
     for i in range(n):
         representatives.append([generate_random_float(), generate_random_float()])
@@ -28,6 +29,8 @@ def find_distance(a, b):
 
 
 car_crashes = generate_random_points(10)
+# car_crashes = [[1.4, 4.3], [-7.3, -9.5], [-2.7, 3.4], [1.1, 7.99], [0.2, -7.2], [-3.3, -6.9], [3.9, 2.2], [3.68, -9.6],
+#               [2.45, 6.8], [2.55, -4.7]]
 
 
 def evaluate(individual, representatives):
@@ -105,7 +108,7 @@ def evolve_species(species, arr_representatives, index):
     return representative
 
 
-if __name__ == '__main__':
+def run():
     p = psutil.Process()
     all_cpus = list(range(psutil.cpu_count()))
     p.cpu_affinity(all_cpus)
@@ -118,15 +121,19 @@ if __name__ == '__main__':
         print(generate_random_points(NUM_SPECIES))
         arr_representatives = manager.list(generate_random_points(NUM_SPECIES))
         results1 = [pool.apply_async(evolve_species, args=(toolbox.species(), arr_representatives, i)) for i in
-                   range(NUM_SPECIES)]
+                    range(NUM_SPECIES)]
 
         results = [p.get() for p in results1]
 
         print(results)
 
-    pool .close()
+    pool.close()
 
-    ga = GeneticAlgorithm()
+    ga = GeneticAlgorithm(crashes=car_crashes)
     print("Fitness of the result:")
     print(ga.calculate_fitness(results))
     print("--- %s seconds ---" % (time.time() - start_time))
+
+
+if __name__ == '__main__':
+    run()
