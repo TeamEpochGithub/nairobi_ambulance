@@ -122,7 +122,7 @@ def delete_rows_with_nan(dataframe):
         df = df.drop(index)
 
 
-# Computes the shortest distance between two points based on their coordinates
+# Computes the distance between two points based on their coordinates
 # The formula : https://en.wikipedia.org/wiki/Great-circle_distance
 def haversine(coord1, coord2):
     # Coordinates in decimal degrees (e.g. 2.89078, 12.79797)
