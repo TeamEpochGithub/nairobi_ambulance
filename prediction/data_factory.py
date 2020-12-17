@@ -17,6 +17,15 @@ import sys
 # I/O
 import glob
 
+
+'''
+Data cleaning of each speed data to reduce size of the file
+'''
+# Load the speed .csv data
+# nairobi_speed = gpd.read_file('DataJupyter/uber_data/movement-speeds-hourly-nairobi-2018-1.csv')
+# speed_processed = nairobi_speed.drop(['geometry', 'segment_id', 'start_junction_id', 'end_junction_id'], axis=1);
+# speed_processed.to_csv("nairobi_speed_january_2018.csv")
+
 '''
 Loading the speed data
 '''
