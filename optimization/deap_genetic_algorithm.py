@@ -73,9 +73,11 @@ toolbox.register("get_best", tools.selBest, k=1)
 NUM_SPECIES = 6
 
 
-def evolve_species(species, list_of_representatives, index, car_crashes):
+def evolve_species(species, list_of_representatives, index, car_crashes, ngen):
     """
 
+    :param ngen: Number of generations to run the algorithm for
+    :param car_crashes:
     :param species: the current population(species)
     :param list_of_representatives: the best individuals from each population
     :param index: the index of the best individual of the current species
@@ -85,8 +87,6 @@ def evolve_species(species, list_of_representatives, index, car_crashes):
     """
     representative = toolbox.get_best(species)
     list_of_representatives[index] = representative[0]
-
-    ngen = 1500
 
     for _ in tqdm(range(ngen)):
         # Vary the species individuals
@@ -108,7 +108,7 @@ def evolve_species(species, list_of_representatives, index, car_crashes):
     return representative
 
 
-def run(car_crashes):
+def run(car_crashes, ngen):
     p = psutil.Process()
     all_cpus = list(range(psutil.cpu_count()))
     p.cpu_affinity(all_cpus)
@@ -129,7 +129,8 @@ def run(car_crashes):
         list_of_representatives = manager.list(representatives)
 
         results_from_processes = [pool.apply_async(evolve_species, args=(list_of_species[i], list_of_representatives,
-                                                                         i, car_crashes)) for i in range(NUM_SPECIES)]
+                                                                         i, car_crashes, ngen)) for i in
+                                  range(NUM_SPECIES)]
 
         results = [p.get() for p in results_from_processes]
 
@@ -145,4 +146,4 @@ def run(car_crashes):
 
 if __name__ == '__main__':
     car_crashes = generate_random_points(10)
-    run(car_crashes)
+    run(car_crashes, 1500)
