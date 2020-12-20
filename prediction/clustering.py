@@ -8,7 +8,8 @@ from kneed import KneeLocator
 
 sys.path.append(path.abspath('../optimization'))
 
-from genetic_algorithm import GeneticAlgorithm
+from optimization.genetic_algorithm import GeneticAlgorithm
+from optimization.deap_genetic_algorithm import run
 
 # Load the data
 train = pd.read_csv('nairobi_data/data_zindi/Train.csv', parse_dates=['datetime'])
@@ -122,6 +123,7 @@ for i in range(len(fullTrain)):
         points = crashes[finalKmeans.labels_ == nCluster, :]
         ga = GeneticAlgorithm(crashes, n_iter)
         result = ga.run()
+        # result = run(crashes, n_iter)  #and comment out the 2 lines above
         ambulancesPositionsClusters.append(result)
 
     ambulancesPosition.append(ambulancesPositionsClusters)
