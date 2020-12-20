@@ -1,9 +1,10 @@
 # Parallelization
 import dask.dataframe as dd
+from dask.dataframe import from_pandas
 
 # Geo-spatial data
 import geopandas as gpd
-import math
+import shapely
 from geopandas import GeoDataFrame
 from shapely.geometry import Point, LineString
 from shapely.ops import nearest_points
@@ -11,12 +12,12 @@ from shapely.ops import nearest_points
 # Classic
 import numpy as np
 import pandas as pd
+#import matplotlib.pyplot as plt
 import sys
-# import matplotlib.pyplot as plt
+import math
 
 # I/O
 import glob
-
 
 '''
 Data cleaning of each speed data to reduce size of the file
@@ -89,10 +90,10 @@ Loading data from Zindi
 '''
 
 # Training data
-train = pd.read_csv('nairobi_data/data_zindi/Train.csv')
+train = pd.read_csv('nairobi_data/data_zindi/Train.csv', parse_dates=['datetime'])
 
 # Weather data
-weather_data = pd.read_csv('nairobi_data/data_zindi/Weather_Nairobi_Daily_GFS.csv')
+weather_data = pd.read_csv('nairobi_data/data_zindi/Weather_Nairobi_Daily_GFS.csv', parse_dates=['Date'])
 
 # Segment survey data
 segment_info = pd.read_csv('nairobi_data/data_zindi/Segment_info.csv')
@@ -118,8 +119,7 @@ def delete_rows_with_nan(dataframe):
     rows_with_NaN = dataframe[row_has_NaN]
 
     for index, row in rows_with_NaN.iterrows():
-        dataframe = dataframe.drop(index)
-        df = df.drop(index)
+        dataframe.drop(index, inplace=True)
 
 
 # Computes the distance between two points based on their coordinates
@@ -149,6 +149,11 @@ def haversine(coord1, coord2):
     return meters
 
 
+# Processing segment_info
+segment_info = segment_info.append(pd.Series([-1], index=segment_info.columns[:len([-1])]), ignore_index=True)
+segment_info = segment_info.fillna(0)
+segment_info = segment_info.groupby(['segment_id']).sum().reset_index()
+
 # Processing weather data
 delete_rows_with_nan(weather_data)
 
@@ -166,23 +171,41 @@ road_processed = nairobi_speed_only_visualization.drop(['speed_mean_kph', 'pct_f
                                                         'speed_freeflow_kph'], axis=1)
 
 # Creating a (geometry) point column and add it to the Train.csv
-points = [Point(xy) for xy in zip(train['longitude'], train['latitude'])]
+points = [Point(xy) for xy in zip(train_with_weather['longitude'], train_with_weather['latitude'])]
 
 # Converting to GeoDataframe in order to have Points object as geometry dtype containing points
-geo_points = GeoDataFrame(train, crs="EPSG:4326", geometry=points)
-geo_speed_data['longitude'] = np.nan
-geo_speed_data['latitude'] = np.nan
+geo_points = GeoDataFrame(train_with_weather, crs="EPSG:4326", geometry=points)
+geo_points['segment_id'] = None
 
-# Closest point to the segment_geometry : TESTING PURPOSES
+'''
+Closest point to the segment_geometry 
+'''
 for i, point in geo_points.iterrows():
 
-    smallest_distance = 1000000000000
+    smallest_distance = sys.maxsize
+    smallest_index = -1
     for j, road in segment_geometry.iterrows():
 
-        current_distance = point['geometry'].distance(road['geometry'])
-        if (current_distance < smallest_distance):
-            smallest_distance = current_distance
-    print(point.geometry, ":", smallest_distance)
+        road_geometry = road['geometry']
+        nearest_road_point = nearest_points(road_geometry, point['geometry'])[0]
+
+        current_smallest_distance = haversine(nearest_road_point.coords[:], point['geometry'].coords[:])
+        if current_smallest_distance < smallest_distance:
+            smallest_distance = current_smallest_distance
+            smallest_index = j
+
+    if smallest_distance < 150 and smallest_index != -1:
+        geo_points.at[i, 'segment_id'] = segment_geometry.at[smallest_index, 'segment_id']
+    else:
+        geo_points.at[i, 'segment_id'] = -1
+
+
+geo_points = geo_points.merge(segment_info, how='left', left_on='segment_id', right_on='segment_id')
+geo_points.drop('segment_id', axis=1, inplace=True)
+geo_points.drop('geometry', axis=1, inplace=True)
+
+pandas_df_from_geo = pd.DataFrame(geo_points, copy=True)
+pandas_df_from_geo.to_csv('data_without_speed_distance_*certain distance threshold*')
 
 '''
 Assigning GeoSeries (in this case LineString) to the speed data.
