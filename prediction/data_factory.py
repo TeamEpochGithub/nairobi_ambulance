@@ -1,6 +1,7 @@
 # Parallelization
 import dask.dataframe as dd
 from dask.dataframe import from_pandas
+import multiprocessing as mp
 
 # Geo-spatial data
 import geopandas as gpd
@@ -8,13 +9,17 @@ import shapely
 from geopandas import GeoDataFrame
 from shapely.geometry import Point, LineString
 from shapely.ops import nearest_points
+import scipy
+from scipy.spatial import cKDTree
 
 # Classic
 import numpy as np
 import pandas as pd
-#import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import sys
 import math
+import itertools
+from operator import itemgetter
 
 # I/O
 import glob
@@ -149,6 +154,25 @@ def haversine(coord1, coord2):
     return meters
 
 
+# CKD-Tree to compute nearest road to all the points in Train.csv
+def ckdtree_nearest_road_to_point(gdfA, gdfB, gdfB_cols=['road_id']):
+    A = np.concatenate(
+        [np.array(geom.coords) for geom in gdfA.geometry.to_list()])
+    B = [np.array(geom.coords) for geom in gdfB.geometry.to_list()]
+
+    B_ix = tuple(itertools.chain.from_iterable(
+        [itertools.repeat(i, x) for i, x in enumerate(list(map(len, B)))]))
+    B = np.concatenate(B)
+    ckd_tree = cKDTree(B)
+    dist, idx = ckd_tree.query(A, k=1)
+    idx = itemgetter(*idx)(B_ix)
+
+    gdf = pd.concat(
+        [gdfA, gdfB.loc[idx, gdfB_cols].reset_index(drop=True),
+         pd.Series(dist, name='dist')], axis=1)
+    return gdf
+
+
 # Processing segment_info
 segment_info = segment_info.append(pd.Series([-1], index=segment_info.columns[:len([-1])]), ignore_index=True)
 segment_info = segment_info.fillna(0)
@@ -169,6 +193,7 @@ train_with_weather.drop('uid', axis=1, inplace=True)
 # Processing the road data
 road_processed = nairobi_speed_only_visualization.drop(['speed_mean_kph', 'pct_from_freeflow',
                                                         'speed_freeflow_kph'], axis=1)
+road_processed['road_id'] = nairobi_speed_only_visualization.index
 
 # Creating a (geometry) point column and add it to the Train.csv
 points = [Point(xy) for xy in zip(train_with_weather['longitude'], train_with_weather['latitude'])]
@@ -199,68 +224,80 @@ for i, point in geo_points.iterrows():
     else:
         geo_points.at[i, 'segment_id'] = -1
 
-
 geo_points = geo_points.merge(segment_info, how='left', left_on='segment_id', right_on='segment_id')
 geo_points.drop('segment_id', axis=1, inplace=True)
 geo_points.drop('geometry', axis=1, inplace=True)
 
 pandas_df_from_geo = pd.DataFrame(geo_points, copy=True)
-pandas_df_from_geo.to_csv('data_without_speed_distance_*certain distance threshold*')
-
-'''
-Assigning GeoSeries (in this case LineString) to the speed data.
-Iterate through both dataframes and if osm_way_id, osm_start_node_id and osm_end_node_id are matched,
-assign to that row the road data
-'''
-# def assign_linestring_to_speed(road, speed):
-
-# trying instead for nested loop to do lambda expressions + Dask parallelization
-# geo_speed_data['geometry'] = geo_speed_data.apply(lambda row: assign_linestring_to_speed(road, row))
-for i, road in road_processed.iterrows():
-
-    for j, speed in geo_speed_data.iterrows():
-
-        if (road['osmwayid'] == speed['osm_way_id'] and road['osmstartnodeid'] == speed['osm_start_node_id'] and
-                road['osmendnodeid'] == speed['osm_end_node_id']):
-            geo_speed_data.at[j, 'geometry'] = road['geometry']
-            geo_speed_data.at[j, 'osmhighway'] = road['osmhighway']
+pandas_df_from_geo.to_csv('data_without_speed_distance_*certain distance threshold*.csv')
 
 '''
 Assigning points to the particular road in particular time if the distance threshold is met.
 Converted lat and lon to Point geo-object and using .distance() to measure distance between the road and
 the point.
 '''
+nearest_road_to_point_any_distance = ckdtree_nearest_road_to_point(geo_points, road_processed)
+data_with_road_distance_threshold = nearest_road_to_point_any_distance[nearest_road_to_point_any_distance["dist"] <= 0.002]
 
-
-# Assign points to the road/speed data
-def point_to_road(point, road, road_index, distance):
-    if distance >= 0 and distance < 20:
-        geo_speed_data.at[smallest_index_road, 'longitude'] = point['longitude']
-        geo_speed_data.at[smallest_index_road, 'latitude'] = point['latitude']
-
-
-# Iterate through points and roads
-for i, point in geo_points.iterrows():
-
-    smallest_distance = sys.maxint;
-    smallest_index_road = -1;
-    for j, road in geo_speed_data.iterrows():
-        # Getting the point of the road that is nearest to the
-        road_geometry = road['geometry']
-        nearest_road_point = nearest_points(road_geometry, point['geometry'])[0]
-
-        current_smallest_distance = haversine(nearest_road_point, point['geometry'])
-        # if current_smallest_distance < smallest_distance:
-        #      if road['utc_timestamp'].hour < point['datetime'].hour:
-        #         smallest_distance = current_smallest_distance
-        #     smallest_index_road = j
-
-    point_to_road(point, road, smallest_index_road, smallest_distance)
+# Data with point connected to osm road
+point_road_merged = data_with_road_distance_threshold.merge(road_processed, how='left', on='road_id')
+point_road_merged.drop(['geometry_x', 'road_id', 'dist', 'geometry_y'], axis=1, inplace=True)
+point_road_merged = pd.DataFrame(point_road_merged)
 
 '''
-Deleting redundant rows (roads) if no points were assigned.
+Assigning GeoSeries (in this case LineString) to the speed data.
+Iterate through both dataframes and if osm_way_id, osm_start_node_id and osm_end_node_id are matched,
+assign to that row the road data - STILL IN DEVELOPMENT - 
+- STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - 
+- STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - 
+- STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - 
 '''
+nairobi_speed_january_2018 = pd.read_csv('nairobi_speed_january_2018.csv', parse_dates=["utc_timestamp"])
 
-# Drop the speed rows if it contains points that are NaN
+nairobi_speed_january_2018['utc_timestamp'] = pd.to_datetime(nairobi_speed_january_2018['utc_timestamp'])
+nairobi_speed_january_2018['end_timestamp'] =  pd.to_datetime(nairobi_speed_january_2018
+                            .year*10000+
+                            nairobi_speed_january_2018
+                            .month*100+nairobi_speed_january_2018
+                            .day,format='%Y%m%d') + nairobi_speed_january_2018.hour.astype('timedelta64[h]')
 
-delete_rows_with_nan(geo_speed_data)
+nairobi_speed_january_2018['utc_timestamp'] = pd.to_datetime(nairobi_speed_january_2018['utc_timestamp'])
+nairobi_speed_january_2018['end_timestamp'] = pd.to_datetime(nairobi_speed_january_2018['end_timestamp'])
+train['datetime'] = pd.to_datetime(train['datetime'])
+
+nairobi_speed_january_2018['utc_timestamp'] = nairobi_speed_january_2018['utc_timestamp'].dt.tz_localize(None)
+nairobi_speed_january_2018['end_timestamp'] = nairobi_speed_january_2018['end_timestamp'].dt.tz_localize(None)
+train['datetime'] = train['datetime'].dt.tz_localize(None)
+
+
+def speed_to_point(speed, point_on_the_road):
+    for i, x in point_on_the_road.iterrows():
+        if x['speed'] >= 0:
+            continue
+
+        if speed['utc_timestamp'] <= x['datetime'] <= speed['end_timestamp']:
+            train.at[i, 'speed'] = speed['Unnamed: 0']
+
+            return True
+
+    return False
+
+
+dask_january = dd.from_pandas(nairobi_speed_january_2018, npartitions=3*mp.cpu_count())
+# .map_partitions(lambda df: df.apply(lambda x: speed_to_point(x, train), axis=1)) \
+# .compute(scheduler='processes')
+
+testing = dask_january.map_partitions(lambda df: df.apply(lambda x: speed_to_point(x, train), axis=1)) \
+                             .compute(scheduler='processes')
+
+
+# trying instead for nested loop to do lambda expressions + Dask parallelization
+# geo_speed_data['geometry'] = geo_speed_data.apply(lambda row: assign_linestring_to_speed(road, row))
+# for i, road in road_processed.iterrows():
+    #
+    # for j, speed in geo_speed_data.iterrows():
+    #
+    #     if (road['osmwayid'] == speed['osm_way_id'] and road['osmstartnodeid'] == speed['osm_start_node_id'] and
+    #             road['osmendnodeid'] == speed['osm_end_node_id']):
+    #         geo_speed_data.at[j, 'geometry'] = road['geometry']
+    #         geo_speed_data.at[j, 'osmhighway'] = road['osmhighway']
