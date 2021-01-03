@@ -36,7 +36,7 @@ Data cleaning of each speed data to reduce size of the file
 Loading the speed data
 '''
 # January - March 2018
-nairobi_speed_january_2018 = gpd.read_file('nairobi_speed_january_2018.csv', parse_dates=["utc_timestamp"])
+nairobi_speed_january_2018 = pd.read_file('nairobi_speed_january_2018.csv', parse_dates=["utc_timestamp"])
 nairobi_speed_february_2018 = gpd.read_file('nairobi_speed_february_2018.csv', parse_dates=["utc_timestamp"])
 nairobi_speed_march_2018 = gpd.read_file('nairobi_speed_march_2018.csv', parse_dates=["utc_timestamp"])
 
@@ -81,14 +81,25 @@ speed_data = [nairobi_speed_january_2018, nairobi_speed_february_2018, nairobi_s
 geo_speed_data = gpd.GeoDataFrame(pd.concat(speed_data, ignore_index=True))
 
 '''
-Dask parallelization
-Dask Geopandas : https://github.com/jsignell/dask-geopandas (still experimental)
+Ubre data : Quarterly Speeds Statistics by Hour of Day
 '''
-# Speed data with parallelization
-# df_speed = dd.read_csv("nairobi_speed_*_*.csv", parse_dates=["utc_timestamp"])
+quarter_1_2018 = pd.read_csv('uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q1.csv')
+quarter_2_2018 = pd.read_csv('uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q2.csv')
+quarter_3_2018 = pd.read_csv('uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q3.csv')
+quarter_4_2018 = pd.read_csv('uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q4.csv')
+
+quarter_1_2019 = pd.read_csv('uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2019-Q1.csv')
+quarter_2_2019 = pd.read_csv('uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2019-Q2.csv')
+
+# Creating one big speed dataframe
+quarters_prepare = [quarter_1_2018, quarter_2_2018, quarter_3_2018, quarter_4_2018, quarter_1_2019, quarter_2_2019]
+
+quaterly = pd.concat(quarters_prepare)
+quaterly = quaterly.sort_values(by=['hour_of_day', 'year', 'quarter'], ascending=True)
 
 # Road data
 nairobi_speed_only_visualization = gpd.read_file('nairobi_speed_only_visualization.geojson')
+road_2019 = gpd.read_file("updated_road_2019.geojson")
 
 '''
 Loading data from Zindi
@@ -194,6 +205,7 @@ train_with_weather.drop('uid', axis=1, inplace=True)
 road_processed = nairobi_speed_only_visualization.drop(['speed_mean_kph', 'pct_from_freeflow',
                                                         'speed_freeflow_kph'], axis=1)
 road_processed['road_id'] = nairobi_speed_only_visualization.index
+road_2019['road_id'] = road_2019.index
 
 # Creating a (geometry) point column and add it to the Train.csv
 points = [Point(xy) for xy in zip(train_with_weather['longitude'], train_with_weather['latitude'])]
@@ -236,8 +248,9 @@ Assigning points to the particular road in particular time if the distance thres
 Converted lat and lon to Point geo-object and using .distance() to measure distance between the road and
 the point.
 '''
-nearest_road_to_point_any_distance = ckdtree_nearest_road_to_point(geo_points, road_processed)
-data_with_road_distance_threshold = nearest_road_to_point_any_distance[nearest_road_to_point_any_distance["dist"] <= 0.002]
+nearest_road_to_point_any_distance = ckdtree_nearest_road_to_point(geo_points, road_2019)
+data_with_road_distance_threshold = nearest_road_to_point_any_distance[
+    nearest_road_to_point_any_distance["dist"] <= 0.03]
 
 # Data with point connected to osm road
 point_road_merged = data_with_road_distance_threshold.merge(road_processed, how='left', on='road_id')
@@ -247,57 +260,78 @@ point_road_merged = pd.DataFrame(point_road_merged)
 '''
 Assigning GeoSeries (in this case LineString) to the speed data.
 Iterate through both dataframes and if osm_way_id, osm_start_node_id and osm_end_node_id are matched,
-assign to that row the road data - STILL IN DEVELOPMENT - 
-- STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - 
-- STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - 
-- STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - - STILL IN DEVELOPMENT - 
+assign to that row the road data.
 '''
 nairobi_speed_january_2018 = pd.read_csv('nairobi_speed_january_2018.csv', parse_dates=["utc_timestamp"])
 
 nairobi_speed_january_2018['utc_timestamp'] = pd.to_datetime(nairobi_speed_january_2018['utc_timestamp'])
-nairobi_speed_january_2018['end_timestamp'] =  pd.to_datetime(nairobi_speed_january_2018
-                            .year*10000+
-                            nairobi_speed_january_2018
-                            .month*100+nairobi_speed_january_2018
-                            .day,format='%Y%m%d') + nairobi_speed_january_2018.hour.astype('timedelta64[h]')
+nairobi_speed_january_2018['end_timestamp'] = pd.to_datetime(nairobi_speed_january_2018
+                                                             .year * 10000 +
+                                                             nairobi_speed_january_2018
+                                                             .month * 100 + nairobi_speed_january_2018
+                                                             .day,
+                                                             format='%Y%m%d') + nairobi_speed_january_2018.hour.astype(
+    'timedelta64[h]')
 
 nairobi_speed_january_2018['utc_timestamp'] = pd.to_datetime(nairobi_speed_january_2018['utc_timestamp'])
 nairobi_speed_january_2018['end_timestamp'] = pd.to_datetime(nairobi_speed_january_2018['end_timestamp'])
 train['datetime'] = pd.to_datetime(train['datetime'])
+point_road_merged['datetime'] = pd.to_datetime(point_road_merged['datetime'])
 
 nairobi_speed_january_2018['utc_timestamp'] = nairobi_speed_january_2018['utc_timestamp'].dt.tz_localize(None)
 nairobi_speed_january_2018['end_timestamp'] = nairobi_speed_january_2018['end_timestamp'].dt.tz_localize(None)
 train['datetime'] = train['datetime'].dt.tz_localize(None)
+point_road_merged['datetime'] = point_road_merged['datetime'].dt.tz_localize(None)
+
+point_road_merged['quarter'] = 0
+for i, x in point_road_merged.iterrows():
+
+    m = x.datetime.month
+
+    if m == 1 or m == 2 or m == 3:
+        point_road_merged.at[i, 'quarter'] = 1
+    elif m == 4 or m == 5 or m == 6:
+        point_road_merged.at[i, 'quarter'] = 2
+    elif m == 7 or m == 8 or m == 9:
+        point_road_merged.at[i, 'quarter'] = 3
+    elif m == 10 or m == 11 or m == 12:
+        point_road_merged.at[i, 'quarter'] = 4
 
 
-def speed_to_point(speed, point_on_the_road):
-    for i, x in point_on_the_road.iterrows():
-        if x['speed'] >= 0:
-            continue
+def binary_search_speed(df, current_point):
+    particular_osm = df[(df['osm_way_id'] == current_point.osmwayid) &
+                        (df['quarter'] == current_point.quarter) &
+                        (df['year'] == current_point.datetime.year)]
+    start, end = 0, (len(particular_osm) - 1)
+    while start <= end:
+        mid = (start + end) // 2
+        speed = particular_osm.iloc[mid]
 
-        if speed['utc_timestamp'] <= x['datetime'] <= speed['end_timestamp']:
-            train.at[i, 'speed'] = speed['Unnamed: 0']
+        if speed.hour_of_day == current_point.datetime.hour:
+            return pd.Series([speed.speed_kph_mean, speed.speed_kph_stddev,
+                              speed.speed_kph_p50, speed.speed_kph_p85])
 
-            return True
+        if current_point.datetime.hour < speed.hour_of_day:
+            end = mid - 1
+        else:
+            start = mid + 1
 
-    return False
-
-
-dask_january = dd.from_pandas(nairobi_speed_january_2018, npartitions=3*mp.cpu_count())
-# .map_partitions(lambda df: df.apply(lambda x: speed_to_point(x, train), axis=1)) \
-# .compute(scheduler='processes')
-
-testing = dask_january.map_partitions(lambda df: df.apply(lambda x: speed_to_point(x, train), axis=1)) \
-                             .compute(scheduler='processes')
+    return pd.Series([0, 0, 0, 0])
 
 
-# trying instead for nested loop to do lambda expressions + Dask parallelization
-# geo_speed_data['geometry'] = geo_speed_data.apply(lambda row: assign_linestring_to_speed(road, row))
-# for i, road in road_processed.iterrows():
-    #
-    # for j, speed in geo_speed_data.iterrows():
-    #
-    #     if (road['osmwayid'] == speed['osm_way_id'] and road['osmstartnodeid'] == speed['osm_start_node_id'] and
-    #             road['osmendnodeid'] == speed['osm_end_node_id']):
-    #         geo_speed_data.at[j, 'geometry'] = road['geometry']
-    #         geo_speed_data.at[j, 'osmhighway'] = road['osmhighway']
+point_road_merged['speed_kph_mean'] = 0
+point_road_merged['speed_kph_stddev'] = 0
+point_road_merged['speed_kph_p50'] = 0
+point_road_merged['speed_kph_p85'] = 0
+
+# Works but cannot return multiple columns
+# dask_train = dd.from_pandas(point_road_merged, npartitions=2*multiprocessing.cpu_count())
+# dask_train['speed_kph_mean'] = dask_train.map_partitions(lambda df: df.apply(lambda x: binary_search_speed(
+#     quaterly, x), axis=1)).compute(scheduler='processes')
+
+point_road_merged[['speed_kph_mean', 'speed_kph_stddev', 'speed_kph_p50', 'speed_kph_p85']] = point_road_merged.apply(
+    lambda x: binary_search_speed(
+        quaterly, x), axis=1)
+
+point_road_merged.drop(['quarter'], axis=1, inplace=True)
+point_road_merged.to_csv('speed_data_dist_0.03_ckdtree.csv')
