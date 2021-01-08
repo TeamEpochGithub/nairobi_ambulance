@@ -250,7 +250,7 @@ the point.
 '''
 nearest_road_to_point_any_distance = ckdtree_nearest_road_to_point(geo_points, road_2019)
 data_with_road_distance_threshold = nearest_road_to_point_any_distance[
-    nearest_road_to_point_any_distance["dist"] <= 0.03]
+    nearest_road_to_point_any_distance["dist"] <= 0.1]
 
 # Data with point connected to osm road
 point_road_merged = data_with_road_distance_threshold.merge(road_processed, how='left', on='road_id')
@@ -334,4 +334,4 @@ point_road_merged[['speed_kph_mean', 'speed_kph_stddev', 'speed_kph_p50', 'speed
         quaterly, x), axis=1)
 
 point_road_merged.drop(['quarter'], axis=1, inplace=True)
-point_road_merged.to_csv('speed_data_dist_0.03_ckdtree.csv')
+point_road_merged.to_csv('speed_data_dist_0.1_ckdtree.csv')
