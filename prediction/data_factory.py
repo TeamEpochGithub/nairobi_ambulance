@@ -1,7 +1,7 @@
 # Parallelization
-import dask.dataframe as dd
-from dask.dataframe import from_pandas
-import multiprocessing as mp
+# import dask.dataframe as dd
+# from dask.dataframe import from_pandas
+# import multiprocessing as mp
 
 # Geo-spatial data
 import geopandas as gpd
@@ -81,7 +81,7 @@ speed_data = [nairobi_speed_january_2018, nairobi_speed_february_2018, nairobi_s
 geo_speed_data = gpd.GeoDataFrame(pd.concat(speed_data, ignore_index=True))
 
 '''
-Ubre data : Quarterly Speeds Statistics by Hour of Day
+Uber data : Quarterly Speeds Statistics by Hour of Day
 '''
 quarter_1_2018 = pd.read_csv('uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q1.csv')
 quarter_2_2018 = pd.read_csv('uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q2.csv')
