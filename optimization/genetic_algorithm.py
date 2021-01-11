@@ -1,11 +1,12 @@
 import numpy as np
 from geneticalgorithm import geneticalgorithm as ga
+from sklearn.metrics.pairwise import euclidean_distances
 import random
 import time
 
 
-def find_distance(a, b):
-    return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
+# def find_distance(a, b):
+#     return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
 
 
 class GeneticAlgorithm:
@@ -32,22 +33,24 @@ class GeneticAlgorithm:
         total_fitness = 0
 
         for car_crash in self.car_crashes:
-            distance_to_closest_ambulance = self.distance_to_closest_ambulance(car_crash, solution)
+            car_crash = np.reshape(car_crash, (1, 2))
+            distances = euclidean_distances(solution, car_crash)
+            distance_to_closest_ambulance = min(distances)
             total_fitness += distance_to_closest_ambulance
 
         return total_fitness
 
-    @staticmethod
-    def distance_to_closest_ambulance(car_crash, solution):
-        shortest_distance = find_distance(car_crash, solution[0])
-
-        for i, ambulance in enumerate(solution):
-            curr_distance = find_distance(car_crash, ambulance)
-
-            if curr_distance < shortest_distance:
-                shortest_distance = curr_distance
-
-        return shortest_distance
+    # @staticmethod
+    # def distance_to_closest_ambulance(car_crash, solution):
+    #     shortest_distance = find_distance(car_crash, solution[0])
+    #
+    #     for i, ambulance in enumerate(solution):
+    #         curr_distance = find_distance(car_crash, ambulance)
+    #
+    #         if curr_distance < shortest_distance:
+    #             shortest_distance = curr_distance
+    #
+    #     return shortest_distance
 
     def run(self):
         start_time = time.time()
@@ -70,5 +73,5 @@ class GeneticAlgorithm:
 
         convergence = model.report
 
-        #print(convergence)
+        print(convergence)
         return model.output_dict['variable']
