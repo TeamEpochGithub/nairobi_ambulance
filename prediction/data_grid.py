@@ -3,10 +3,13 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+from sklearn.svm import OneClassSVM
+from sklearn.metrics import f1_score
+
 # Geo-spatial libraries
-import geopandas as gpd
-from geopandas import GeoDataFrame
-from shapely.geometry import Point
+# import geopandas as gpd
+# from geopandas import GeoDataFrame
+# from shapely.geometry import Point
 
 # .py scripts
 from time_aux_functions import roundDateTime3h, gen_datetime
@@ -214,17 +217,24 @@ y = y.values
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
 # Fit model training data
-model = XGBClassifier(n_estimators=100, max_depth=8, use_label_encoder=False, objective='binary:logistic')
-model.fit(X_train, y_train)
+# model = XGBClassifier(n_estimators=100, max_depth=8, use_label_encoder=False, objective='binary:logistic')
+model = OneClassSVM(kernel='rbf', gamma='scale', nu=0.01)
+model.fit(X_train[y_train == 1])
 # Make predictions for test data
+# y_test[y_test == 0] = -1
+# y_test[y_test == 1] = 1
 y_pred = model.predict(X_test)
+
+# score = f1_score(y_test, y_pred, pos_label=1)
+# print('F1 Score: %.3f' % score)
+
 predictions = [round(value) for value in y_pred]
 # Evaluate predictions
 accuracy = accuracy_score(y_test, predictions)
 print("Accuracy: %.2f%%" % (accuracy * 100.0))
 
-plot_importance(model)
-print(plt.show())
+# plot_importance(model)
+# print(plt.show())
 
 # ----------------------- Submission file -----------------------
 # submission = pd.read_csv('nairobi_data/data_zindi/SampleSubmission.csv', parse_dates=['date'])
