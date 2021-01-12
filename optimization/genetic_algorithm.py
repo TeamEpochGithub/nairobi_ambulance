@@ -5,8 +5,8 @@ import random
 import time
 
 
-# def find_distance(a, b):
-#     return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
+def find_distance(a, b):
+    return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
 
 
 class GeneticAlgorithm:
@@ -15,8 +15,9 @@ class GeneticAlgorithm:
 
         self.car_crashes = crashes
 
-        car_crashes = [(random.uniform(-10.0, 10.0), random.uniform(-10.0, 10.0)) for i in range(10)]
+        car_crashes = [(random.uniform(36.2, 38), random.uniform(-3.2, -0.5)) for i in range(30)]
         self.car_crashes = np.array(car_crashes)
+        print(car_crashes)
 
         self.max_num_iterations = max_num_iterations
 
@@ -33,24 +34,24 @@ class GeneticAlgorithm:
         total_fitness = 0
 
         for car_crash in self.car_crashes:
-            car_crash = np.reshape(car_crash, (1, 2))
-            distances = euclidean_distances(solution, car_crash)
-            distance_to_closest_ambulance = min(distances)
-            total_fitness += distance_to_closest_ambulance
+            # car_crash = np.reshape(car_crash, (1, 2))
+            # distances = euclidean_distances(solution, car_crash)
+            # distance_to_closest_ambulance = min(distances)
+            total_fitness += self.distance_to_closest_ambulance(car_crash, solution)
 
         return total_fitness
 
-    # @staticmethod
-    # def distance_to_closest_ambulance(car_crash, solution):
-    #     shortest_distance = find_distance(car_crash, solution[0])
-    #
-    #     for i, ambulance in enumerate(solution):
-    #         curr_distance = find_distance(car_crash, ambulance)
-    #
-    #         if curr_distance < shortest_distance:
-    #             shortest_distance = curr_distance
-    #
-    #     return shortest_distance
+    @staticmethod
+    def distance_to_closest_ambulance(car_crash, solution):
+        shortest_distance = find_distance(car_crash, solution[0])
+
+        for i, ambulance in enumerate(solution):
+            curr_distance = find_distance(car_crash, ambulance)
+
+            if curr_distance < shortest_distance:
+                shortest_distance = curr_distance
+
+        return shortest_distance
 
     def run(self):
         start_time = time.time()
