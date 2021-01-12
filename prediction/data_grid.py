@@ -92,8 +92,11 @@ for i, x in dfNegativeSamples.iterrows():
         mean_kph_2019 = speed_quarter_1_2019['speed_kph_mean'].mean()
         mean_kph_2018 = speed_quarter_1_2018['speed_kph_mean'].mean()
 
+        std_kph_2019 = speed_quarter_1_2019['speed_kph_stddev'].mean()
+        std_kph_2018 = speed_quarter_1_2018['speed_kph_stddev'].mean()
+
         mean_kph = (mean_kph_2018 + mean_kph_2019) / 2
-        std_kph = speed_quarter_1_2018['speed_kph_stddev'].mean()
+        std_kph = (std_kph_2019 + std_kph_2018) / 2
 
         low_speed_bias = std_kph
         low_speed = mean_kph - std_kph - low_speed_bias
@@ -113,7 +116,11 @@ for i, x in dfNegativeSamples.iterrows():
         mean_kph_2019 = speed_quarter_2_2019['speed_kph_mean'].mean()
         mean_kph_2018 = speed_quarter_2_2018['speed_kph_mean'].mean()
 
+        std_kph_2019 = speed_quarter_2_2019['speed_kph_stddev'].mean()
+        std_kph_2018 = speed_quarter_2_2018['speed_kph_stddev'].mean()
+
         mean_kph = (mean_kph_2018 + mean_kph_2019) / 2
+        std_kph = (std_kph_2019 + std_kph_2018) / 2
 
         low_speed_bias = std_kph
         low_speed = mean_kph - std_kph - low_speed_bias
