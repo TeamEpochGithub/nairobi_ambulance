@@ -2,15 +2,18 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import random
+from datetime import datetime
 
 # Geo-spatial libraries
-import geopandas as gpd
-from geopandas import GeoDataFrame
+#import geopandas as gpd
+#from geopandas import GeoDataFrame
 from shapely.geometry import Point
 
 # .py scripts
 from time_aux_functions import roundDateTime3h, gen_datetime
-from road_speed_functions import ckdtree_nearest_road_to_point,  binary_search_speed
+from road_speed_functions import ckdtree_nearest_road_to_point,  binary_search_speed, fill_speeds
+from optimization.genetic_algorithm import GeneticAlgorithm
 
 # Classifier
 from sklearn.metrics import mean_squared_error, accuracy_score
@@ -23,16 +26,6 @@ dfCrashes = pd.read_csv('nairobi_data/data_zindi/Train.csv', parse_dates=['datet
 # Load the road data
 # road_2019 = gpd.read_file("nairobi_data/updated_road_2019.geojson")
 # road_2019['road_id'] = road_2019.index
-
-
-#Uber data : Quarterly Speeds Statistics by Hour of Day
-quarter_1_2018 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q1.csv')
-quarter_2_2018 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q2.csv')
-quarter_3_2018 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q3.csv')
-quarter_4_2018 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q4.csv')
-
-quarter_1_2019 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2019-Q1.csv')
-quarter_2_2019 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2019-Q2.csv')
 
 # Creating one big speed dataframe
 # quarters_prepare = [quarter_1_2018, quarter_2_2018, quarter_3_2018, quarter_4_2018, quarter_1_2019, quarter_2_2019]
@@ -76,91 +69,10 @@ dfNegativeSamples = dfNegativeSamples.round(1)
 dfNegativeSamples['quarter'] = 0
 dfNegativeSamples['speed_kph_mean'] = 0.0
 
-for i, x in dfNegativeSamples.iterrows():
-    print(i)
-    m = x.datetime.month
-    h = x.datetime.hour
-
-    if m == 1 or m == 2 or m == 3:
-        dfNegativeSamples.at[i, 'quarter'] = 1
-        speed_quarter_1_2018 = quarter_1_2018[
-            (quarter_1_2018['hour_of_day'] == h) & (quarter_1_2018['year'] == 2018)]
-
-        speed_quarter_1_2019 = quarter_1_2019[
-            (quarter_1_2019['hour_of_day'] == h) & (quarter_1_2019['year'] == 2019)]
-
-        mean_kph_2019 = speed_quarter_1_2019['speed_kph_mean'].mean()
-        mean_kph_2018 = speed_quarter_1_2018['speed_kph_mean'].mean()
-
-        std_kph_2019 = speed_quarter_1_2019['speed_kph_stddev'].mean()
-        std_kph_2018 = speed_quarter_1_2018['speed_kph_stddev'].mean()
-
-        mean_kph = (mean_kph_2018 + mean_kph_2019) / 2
-        std_kph = (std_kph_2019 + std_kph_2018) / 2
-
-        low_speed_bias = std_kph
-        low_speed = mean_kph - std_kph - low_speed_bias
-        high_speed = mean_kph + std_kph
-        random_speed = np.random.uniform(low_speed, high_speed)
-
-        dfNegativeSamples.at[i, 'speed_kph_mean'] = random_speed
-
-    elif m == 4 or m == 5 or m == 6:
-        dfNegativeSamples.at[i, 'quarter'] = 2
-        speed_quarter_2_2018 = quarter_2_2018[
-            (quarter_2_2018['hour_of_day'] == h) & (quarter_2_2018['year'] == 2018)]
-
-        speed_quarter_2_2019 = quarter_2_2019[
-            (quarter_2_2019['hour_of_day'] == h) & (quarter_2_2019['year'] == 2019)]
-
-        mean_kph_2019 = speed_quarter_2_2019['speed_kph_mean'].mean()
-        mean_kph_2018 = speed_quarter_2_2018['speed_kph_mean'].mean()
-
-        std_kph_2019 = speed_quarter_2_2019['speed_kph_stddev'].mean()
-        std_kph_2018 = speed_quarter_2_2018['speed_kph_stddev'].mean()
-
-        mean_kph = (mean_kph_2018 + mean_kph_2019) / 2
-        std_kph = (std_kph_2019 + std_kph_2018) / 2
-
-        low_speed_bias = std_kph
-        low_speed = mean_kph - std_kph - low_speed_bias
-        high_speed = mean_kph + std_kph
-        random_speed = np.random.uniform(low_speed, high_speed)
-
-        dfNegativeSamples.at[i, 'speed_kph_mean'] = random_speed
-
-    elif m == 7 or m == 8 or m == 9:
-        dfNegativeSamples.at[i, 'quarter'] = 3
-        speed_quarter_3_2018 = quarter_3_2018[
-            (quarter_3_2018['hour_of_day'] == h) & (quarter_3_2018['year'] == 2018)]
-
-        mean_kph = speed_quarter_3_2018['speed_kph_mean'].mean()
-        std_kph = speed_quarter_3_2018['speed_kph_stddev'].mean()
-
-        low_speed_bias = std_kph
-        low_speed = mean_kph - std_kph - low_speed_bias
-        high_speed = mean_kph + std_kph
-        random_speed = np.random.uniform(low_speed, high_speed)
-
-        dfNegativeSamples.at[i, 'speed_kph_mean'] = random_speed
-
-    elif m == 10 or m == 11 or m == 12:
-        dfNegativeSamples.at[i, 'quarter'] = 4
-        speed_quarter_4_2018 = quarter_4_2018[
-            (quarter_4_2018['hour_of_day'] == h) & (quarter_4_2018['year'] == 2018)]
-
-        mean_kph = speed_quarter_4_2018['speed_kph_mean'].mean()
-        std_kph = speed_quarter_4_2018['speed_kph_stddev'].mean()
-
-        low_speed_bias = std_kph
-        low_speed = mean_kph - std_kph - low_speed_bias
-        high_speed = mean_kph + std_kph
-        random_speed = np.random.uniform(low_speed, high_speed)
-
-        dfNegativeSamples.at[i, 'speed_kph_mean'] = random_speed
+fill_speeds(dfNegativeSamples)
 
 dfNegativeSamples = dfNegativeSamples.drop(columns=['quarter'])
-print(dfNegativeSamples)
+#print(dfNegativeSamples)
 
 # # Load the Speed data
 dfSpeed = pd.read_csv('final_data/speed_data/speed_data_dist_0.1_ckdtree.csv', parse_dates=['datetime'], index_col=0)
@@ -224,43 +136,60 @@ accuracy = accuracy_score(y_test, predictions)
 print("Accuracy: %.2f%%" % (accuracy * 100.0))
 
 plot_importance(model)
-print(plt.show())
+#print(plt.show())
 
 # ----------------------- Submission file -----------------------
-# submission = pd.read_csv('nairobi_data/data_zindi/SampleSubmission.csv', parse_dates=['date'])
-#
-# submission = submission['date']
-#
-# lat = np.arange(-3.1, -0.4, 0.1)
-# long = np.arange(36, 38, 0.1)
-# grid = np.zeros((len(lat) * len(long), 2))
-#
-# for i in range(len(lat)):
-#     for j in range(len(long)):
-#         grid[i * len(long) + j, 0] = lat[i]
-#         grid[i * len(long) + j, 1] = long[j]
-#
-# for date in submission.values:
-#     df = pd.DataFrame(grid, columns=['latitude', 'longitude'])
-#     df['datetime'] = date
-#
-#     df = df.merge(dfWeather, how='left', left_on='datetime', right_on='Date')
-#     df = df.drop(columns='Date')
-#
-#     # df = df.merge(dfSpeed, how='left', left_on=['datetime', 'latitude', 'longitude'],
-#     #                             right_on=['datetime', 'latitude', 'longitude'])
-#     #
-#     # # ToDo: Check why there are NaN. All the rows should have speed
-#     # df = df.fillna(0)
-#
-#     # Change datetime for Hour, Day of the week and month
-#     df['dayofweek'] = df['datetime'].dt.dayofweek
-#     df['month'] = df['datetime'].dt.month
-#     df['hour'] = df['datetime'].dt.hour
-#     df = df.drop(columns='datetime')
-#
-#     y_pred = model.predict(df)
-#
-#     auxDf = df.loc[y_pred == 1]
-#     crashes = auxDf[['latitude', 'longitude']].values
-#     print(y_pred)
+submission = pd.read_csv('nairobi_data/data_zindi/SampleSubmission.csv', parse_dates=['date'])
+
+lat = np.arange(-3.1, -0.4, 0.1)
+long = np.arange(36, 38, 0.1)
+grid = np.zeros((len(lat) * len(long), 2))
+
+for i in range(len(lat)):
+    for j in range(len(long)):
+        grid[i * len(long) + j, 0] = lat[i]
+        grid[i * len(long) + j, 1] = long[j]
+
+
+ambulancesPositions = []
+
+for i, row in submission.iterrows():
+    df = pd.DataFrame(grid, columns=['latitude', 'longitude'])
+    df['datetime'] = row['date']
+
+    df['quarter'] = 0
+    df['speed_kph_mean'] = 0.0
+    fill_speeds(df)
+    df = df.drop(columns=['quarter'])
+
+    # ToDo: Check why there are NaN. All the rows should have speed
+    df = df.fillna(0)
+
+    df = df.merge(dfWeather, how='left', left_on='datetime', right_on='Date')
+    df = df.drop(columns='Date')
+
+    # Change datetime for Hour, Day of the week and month
+    df['dayofweek'] = df['datetime'].dt.dayofweek
+    df['month'] = df['datetime'].dt.month
+    df['hour'] = df['datetime'].dt.hour
+    df = df.drop(columns='datetime')
+
+    y_pred = model.predict(df)
+
+    auxDf = df.loc[y_pred == 1]
+    crashes = auxDf[['latitude', 'longitude']].values
+
+    # If there are less than six crashes we expand one of the crashes to spread the ambulances
+    index = 0
+    while len(crashes) < 7:
+        crashes = np.vstack((crashes, crashes[index] + 0.05))
+        index = index + 1
+
+    ga = GeneticAlgorithm(crashes, 3000)
+    result = ga.run()
+    submission.loc[i, ['A0_Longitude', 'A0_Latitude', 'A1_Longitude', 'A1_Latitude', 'A2_Longitude', 'A2_Latitude', 'A3_Longitude', 'A3_Latitude', 'A4_Longitude', 'A4_Latitude', 'A5_Longitude', 'A5_Latitude']] = result
+
+    print("ROW  " + str(i+1) + " OF " + str(len(submission)))
+
+
+submission.to_csv('XGBoostSubmission.csv', date_format='%m/%d/%Y %H:%M', index=False)

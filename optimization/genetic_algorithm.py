@@ -60,13 +60,13 @@ class GeneticAlgorithm:
                            'crossover_probability': 0.5,
                            'parents_portion': 0.3,
                            'crossover_type': 'uniform',
-                           'max_iteration_without_improv': None}
+                           'max_iteration_without_improv': 200}
 
         model = ga(function=self.calculate_fitness, dimension=12, variable_type='real',
                    variable_boundaries=varbound, algorithm_parameters=algorithm_param)
 
         model.run()
-        print("--- %s seconds ---" % (time.time() - start_time))
+        print("--- %s seconds for genetic algorithm ---" % (time.time() - start_time))
 
         convergence = model.report
 
