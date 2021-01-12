@@ -26,13 +26,13 @@ dfCrashes = pd.read_csv('nairobi_data/data_zindi/Train.csv', parse_dates=['datet
 
 
 #Uber data : Quarterly Speeds Statistics by Hour of Day
-# quarter_1_2018 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q1.csv')
-# quarter_2_2018 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q2.csv')
-# quarter_3_2018 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q3.csv')
-# quarter_4_2018 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q4.csv')
-#
-# quarter_1_2019 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2019-Q1.csv')
-# quarter_2_2019 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2019-Q2.csv')
+quarter_1_2018 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q1.csv')
+quarter_2_2018 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q2.csv')
+quarter_3_2018 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q3.csv')
+quarter_4_2018 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2018-Q4.csv')
+
+quarter_1_2019 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2019-Q1.csv')
+quarter_2_2019 = pd.read_csv('nairobi_data/uber_quaterly/movement-speeds-quarterly-by-hod-nairobi-2019-Q2.csv')
 
 # Creating one big speed dataframe
 # quarters_prepare = [quarter_1_2018, quarter_2_2018, quarter_3_2018, quarter_4_2018, quarter_1_2019, quarter_2_2019]
@@ -62,7 +62,6 @@ for i in range(n_negative_samples):
 # Generate 6000 random latitudes and longitudes
 randLat = np.random.uniform(-0.5, -3.1, n_negative_samples)
 randLong = np.random.uniform(36, 38, n_negative_samples)
-randSpeed = np.random.uniform(35, 55, n_negative_samples)
 no_crashes = np.zeros(n_negative_samples)
 
 dfNegativeSamples = pd.DataFrame(columns=['datetime', 'latitude', 'longitude', 'n_crashes'])
@@ -71,73 +70,98 @@ dfNegativeSamples['latitude'] = randLat
 dfNegativeSamples['longitude'] = randLong
 dfNegativeSamples['n_crashes'] = 0
 
-# Creating a (geometry) point column and add it to the dfNegativeSamples
-# points_negative = [Point(xy) for xy in zip(dfNegativeSamples['longitude'], dfNegativeSamples['latitude'])]
-
-# Converting to GeoDataframe in order to have Points object as geometry dtype containing points
-# points_negative = GeoDataFrame(dfNegativeSamples, crs="EPSG:4326", geometry=points_negative)
-# points_negative['segment_id'] = None
-
-# Map negative samples to nearest road
-# nearest_road_to_negative = ckdtree_nearest_road_to_point(points_negative, road_2019)
-# data_with_road_distance_threshold = nearest_road_to_negative[
-#     nearest_road_to_negative["dist"] <= 1]
-
-# Data with point connected to osm road
-# negatives_with_road = data_with_road_distance_threshold.merge(road_2019, how='left', on='road_id')
-# negatives_with_road.drop(['geometry_x', 'road_id', 'geometry_y'], axis=1, inplace=True)
-# negatives_with_road = pd.DataFrame(negatives_with_road)
-#
-# negatives_with_road['quarter'] = 0
-# for i, x in negatives_with_road .iterrows():
-#
-#     m = x.datetime.month
-#
-#     if m == 1 or m == 2 or m == 3:
-#         negatives_with_road.at[i, 'quarter'] = 1
-#     elif m == 4 or m == 5 or m == 6:
-#         negatives_with_road.at[i, 'quarter'] = 2
-#     elif m == 7 or m == 8 or m == 9:
-#         negatives_with_road.at[i, 'quarter'] = 3
-#     elif m == 10 or m == 11 or m == 12:
-#         negatives_with_road.at[i, 'quarter'] = 4
-#
-# negatives_with_road['speed_kph_mean'] = 0
-# negatives_with_road['speed_kph_stddev'] = 0
-# negatives_with_road['speed_kph_p50'] = 0
-# negatives_with_road['speed_kph_p85'] = 0
-#
-# negatives_with_road[['speed_kph_mean', 'speed_kph_stddev', 'speed_kph_p50', 'speed_kph_p85']] = negatives_with_road.apply(
-#     lambda x: binary_search_speed(
-#         quaterly, x), axis=1)
-
-# Negative samples with speed
-# dfNegativeSamples = negatives_with_road
-
-dfNegativeSamples = dfNegativeSamples.drop(columns=['osmstartnodeid', 'osmhighway', 'osmendnodeid', 'osmwayid', 'osmname', 'dist', 'quarter'])
-print(dfNegativeSamples.tail(50))
 # Round to 1 decimal
 dfNegativeSamples = dfNegativeSamples.round(1)
 
-# Round the datetimes to the nearest 3h span
-dfNegativeSamples['datetime'] = dfNegativeSamples['datetime'].apply(roundDateTime3h)
-#dfNegativeSamples['speed_kph_mean'] = randSpeed
-# # Add negative samples
-# dfCrashes = dfCrashes.append(dfNegativeSamples)
-# dfCrashes = dfCrashes.drop_duplicates(subset=['datetime', 'latitude', 'longitude'])
+dfNegativeSamples['quarter'] = 0
+dfNegativeSamples['speed_kph_mean'] = 0.0
 
-# # Add date column for merging
-# dfCrashes['date'] = pd.to_datetime([d.date() for d in dfCrashes.datetime])
-# dfWeather = pd.read_csv('nairobi_data/data_zindi/Weather_Nairobi_Daily_GFS.csv', parse_dates=['Date'])
-#
-# dfCrashes = dfCrashes.merge(dfWeather, how='left', left_on='date', right_on='Date')
-# dfCrashes = dfCrashes.drop(columns=['date', 'Date'])
+for i, x in dfNegativeSamples.iterrows():
+    print(i)
+    m = x.datetime.month
+    h = x.datetime.hour
+
+    if m == 1 or m == 2 or m == 3:
+        dfNegativeSamples.at[i, 'quarter'] = 1
+        speed_quarter_1_2018 = quarter_1_2018[
+            (quarter_1_2018['hour_of_day'] == h) & (quarter_1_2018['year'] == 2018)]
+
+        speed_quarter_1_2019 = quarter_1_2019[
+            (quarter_1_2019['hour_of_day'] == h) & (quarter_1_2019['year'] == 2019)]
+
+        mean_kph_2019 = speed_quarter_1_2019['speed_kph_mean'].mean()
+        mean_kph_2018 = speed_quarter_1_2018['speed_kph_mean'].mean()
+
+        mean_kph = (mean_kph_2018 + mean_kph_2019) / 2
+        std_kph = speed_quarter_1_2018['speed_kph_stddev'].mean()
+
+        low_speed_bias = std_kph
+        low_speed = mean_kph - std_kph - low_speed_bias
+        high_speed = mean_kph + std_kph
+        random_speed = np.random.uniform(low_speed, high_speed)
+
+        dfNegativeSamples.at[i, 'speed_kph_mean'] = random_speed
+
+    elif m == 4 or m == 5 or m == 6:
+        dfNegativeSamples.at[i, 'quarter'] = 2
+        speed_quarter_2_2018 = quarter_2_2018[
+            (quarter_2_2018['hour_of_day'] == h) & (quarter_2_2018['year'] == 2018)]
+
+        speed_quarter_2_2019 = quarter_2_2019[
+            (quarter_2_2019['hour_of_day'] == h) & (quarter_2_2019['year'] == 2019)]
+
+        mean_kph_2019 = speed_quarter_2_2019['speed_kph_mean'].mean()
+        mean_kph_2018 = speed_quarter_2_2018['speed_kph_mean'].mean()
+
+        mean_kph = (mean_kph_2018 + mean_kph_2019) / 2
+
+        low_speed_bias = std_kph
+        low_speed = mean_kph - std_kph - low_speed_bias
+        high_speed = mean_kph + std_kph
+        random_speed = np.random.uniform(low_speed, high_speed)
+
+        dfNegativeSamples.at[i, 'speed_kph_mean'] = random_speed
+
+    elif m == 7 or m == 8 or m == 9:
+        dfNegativeSamples.at[i, 'quarter'] = 3
+        speed_quarter_3_2018 = quarter_3_2018[
+            (quarter_3_2018['hour_of_day'] == h) & (quarter_3_2018['year'] == 2018)]
+
+        mean_kph = speed_quarter_3_2018['speed_kph_mean'].mean()
+        std_kph = speed_quarter_3_2018['speed_kph_stddev'].mean()
+
+        low_speed_bias = std_kph
+        low_speed = mean_kph - std_kph - low_speed_bias
+        high_speed = mean_kph + std_kph
+        random_speed = np.random.uniform(low_speed, high_speed)
+
+        dfNegativeSamples.at[i, 'speed_kph_mean'] = random_speed
+
+    elif m == 10 or m == 11 or m == 12:
+        dfNegativeSamples.at[i, 'quarter'] = 4
+        speed_quarter_4_2018 = quarter_4_2018[
+            (quarter_4_2018['hour_of_day'] == h) & (quarter_4_2018['year'] == 2018)]
+
+        mean_kph = speed_quarter_4_2018['speed_kph_mean'].mean()
+        std_kph = speed_quarter_4_2018['speed_kph_stddev'].mean()
+
+        low_speed_bias = std_kph
+        low_speed = mean_kph - std_kph - low_speed_bias
+        high_speed = mean_kph + std_kph
+        random_speed = np.random.uniform(low_speed, high_speed)
+
+        dfNegativeSamples.at[i, 'speed_kph_mean'] = random_speed
+
+dfNegativeSamples = dfNegativeSamples.drop(columns=['quarter'])
+print(dfNegativeSamples)
 
 # # Load the Speed data
 dfSpeed = pd.read_csv('final_data/speed_data/speed_data_dist_0.1_ckdtree.csv', parse_dates=['datetime'], index_col=0)
 
 # # Remove columns
-dfSpeed = dfSpeed.drop(columns=['uid', 'osmstartnodeid', 'osmhighway', 'osmendnodeid', 'osmwayid', 'osmname', 'dist', 'quarter'])
+dfSpeed = dfSpeed.drop(columns=['uid', 'osmstartnodeid', 'osmhighway',
+                                'osmendnodeid', 'osmwayid', 'osmname', 'dist', 'quarter', 'speed_kph_stddev',
+                                'speed_kph_p50', 'speed_kph_p85'])
 #
 # # Round to 1 decimal
 dfSpeed['latitude'] = dfSpeed['latitude'].round(1)
@@ -150,7 +174,10 @@ dfSpeed['datetime'] = dfSpeed['datetime'].apply(roundDateTime3h)
 dfCrashes = dfCrashes.merge(dfSpeed, how='left', left_on=['datetime', 'latitude', 'longitude'],
                              right_on=['datetime', 'latitude', 'longitude'])
 
-# Add negative samples
+# Round the datetimes to the nearest 3h span
+dfNegativeSamples['datetime'] = dfNegativeSamples['datetime'].apply(roundDateTime3h)
+
+# # Add negative samples
 dfCrashes = dfCrashes.append(dfNegativeSamples)
 dfCrashes = dfCrashes.drop_duplicates(subset=['datetime', 'latitude', 'longitude'])
 
